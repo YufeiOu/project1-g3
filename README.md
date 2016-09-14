@@ -16,7 +16,7 @@ To (re)compile the simulator on Windows:
 
 To run the simulator:  
 
-    $java pentos.sim.Simulator <arguments>
+    $ java pentos.sim.Simulator <arguments>
     
 The simulator arguments are:
     
@@ -25,4 +25,7 @@ The simulator arguments are:
     -s, --sequencer <folder name containing sequencer, e.g. random>
         --gui
         --verbose
-For example, we should usually run: java pentos.sim.Simulator -g g3 --gui
+        
+For example, we should usually run: 
+
+    $ java pentos.sim.Simulator -g g3 --gui
