@@ -34,18 +34,22 @@ public class Player implements pentos.sim.Player {
 			return new Move(false);
 		}
 		else {
-			Move chosen = moves.get(0);
-			//Move chosen = moves.get(gen.nextInt(moves.size()));
-			if (request.type == Building.Type.FACTORY) {
-				int i = moves.size()-1;
-				chosen = moves.get(i);
+			int i = 0;
+			int j = moves.size()-1;
+			Set<Cell> roadCells = null;
+			Move chosen = new Move(false);
+			while (roadCells == null && i < j) {
+				chosen = request.type == Building.Type.FACTORY ? moves.get(i) : moves.get(j);
+				// get coordinates of building placement (position plus local building cell coordinates)
+				Set<Cell> shiftedCells = new HashSet<Cell>();
+				for (Cell x : chosen.request.rotations()[chosen.rotation])
+					shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
+				// builda road to connect this building to perimeter
+				roadCells = findShortestRoad(shiftedCells, land);
+				if (request.type == Building.Type.FACTORY) i++;
+				else j--;
 			}
-			// get coordinates of building placement (position plus local building cell coordinates)
-			Set<Cell> shiftedCells = new HashSet<Cell>();
-			for (Cell x : chosen.request.rotations()[chosen.rotation])
-				shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
-			// builda road to connect this building to perimeter
-			Set<Cell> roadCells = findShortestRoad(shiftedCells, land);
+			
 			if (roadCells != null) {
 				chosen.road = roadCells;
 				road_cells.addAll(roadCells);
