@@ -38,7 +38,7 @@ public class Player implements pentos.sim.Player {
 			int j = moves.size()-1;
 			Set<Cell> roadCells = null;
 			Move chosen = new Move(false);
-			while (roadCells == null && i < j) {
+			while (roadCells == null && i <= j) {
 				chosen = request.type == Building.Type.FACTORY ? moves.get(i) : moves.get(j);
 				// get coordinates of building placement (position plus local building cell coordinates)
 				Set<Cell> shiftedCells = new HashSet<Cell>();
