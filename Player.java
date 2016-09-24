@@ -15,20 +15,48 @@ public class Player implements pentos.sim.Player {
 	public void init() { // function is called once at the beginning before play is called
 	}
 
+	private int objective(Building building, Cell cell, Land land) {
+		int edge_increase = 0;
+		Set<Cell> shiftedCells = new HashSet<Cell>();
+		for (Cell b : building) {
+			shiftedCells.add(new Cell(b.i + cell.i, b.j + cell.j) );
+		}
+
+		for (Cell shiftedCell : shiftedCells) {
+			for (Cell adjCell : shiftedCell.neighbors()) {
+				if (!shiftedCells.contains(adjCell) && land.unoccupied(adjCell))
+					edge_increase += 1;
+				if (!shiftedCells.contains(adjCell) && !land.unoccupied(adjCell))
+					edge_increase -= 2;
+			}
+		}
+
+		return edge_increase;
+	}
+
 	public Move play(Building request, Land land) {
 		// find all valid building locations and orientations
-		ArrayList <Move> moves = new ArrayList <Move> ();
+		ArrayList <Move> moves = new ArrayList<Move> ();
+		ArrayList<Integer> obj = new ArrayList<Integer>();
+		int min_obj = 10000;
+
 		for (int i = 0 ; i < land.side ; i++) {
 			for (int j = 0 ; j < land.side ; j++) {
 				Cell p = new Cell(i, j);
 				Building[] rotations = request.rotations();
 				for (int ri = 0 ; ri < rotations.length ; ri++) {
 					Building b = rotations[ri];
-					if (land.buildable(b, p)) 
+					if (land.buildable(b, p)) {
 						moves.add(new Move(true, request, p, ri, new HashSet<Cell>(), new HashSet<Cell>(), new HashSet<Cell>()));
+						int tmp = objective(b, p, land);
+						obj.add(tmp);
+						min_obj = Math.min(min_obj, tmp);
+					}
 				}
 			}
 		}
+		
+
 
 		if (moves.isEmpty()) { // reject if no valid placements
 			return new Move(false);
@@ -38,6 +66,33 @@ public class Player implements pentos.sim.Player {
 			int j = moves.size()-1;
 			Set<Cell> roadCells = null;
 			Move chosen = new Move(false);
+
+			int k = 0;
+			if (request.type == Building.Type.FACTORY)
+			for (k = 0; k < moves.size(); k++) {
+				if (obj.get(k) == min_obj) {
+					chosen = moves.get(k);
+					Set<Cell> shiftedCells = new HashSet<Cell>();
+					for (Cell x : chosen.request.rotations()[chosen.rotation])
+						shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
+						// builda road to connect this building to perimeter
+					roadCells = findShortestRoad(shiftedCells, land);
+					break;
+				}
+			}
+			else
+			for (k = moves.size()-1; k >=0 ; k--) {
+				if (obj.get(k) == min_obj) {
+					chosen = moves.get(k);
+					Set<Cell> shiftedCells = new HashSet<Cell>();
+					for (Cell x : chosen.request.rotations()[chosen.rotation])
+						shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
+						// builda road to connect this building to perimeter
+					roadCells = findShortestRoad(shiftedCells, land);
+					break;
+				}
+			}
+
 			while (roadCells == null && i <= j) {
 				chosen = request.type == Building.Type.FACTORY ? moves.get(i) : moves.get(j);
 				// get coordinates of building placement (position plus local building cell coordinates)
