@@ -39,12 +39,12 @@ public class Player implements pentos.sim.Player {
 			roadCells = findShortestRoad(shiftedCells, land);
 			if (roadCells != null) break;
 		}
-
+		/*
 		if (!road_built) {
-			roadCells = buildRoad1(land.side);
+			roadCells = buildRoad(land.side);
 			road_built = true;
-		} 
-		
+		}
+		*/
 		if (roadCells != null) {
 			chosen.road = roadCells;
 			road_cells.addAll(roadCells);
@@ -61,49 +61,6 @@ public class Player implements pentos.sim.Player {
 		} else {
 			return new Move(false);
 		}
-	}
-
-	//build the roads based on size of land
-    private Set<Cell> buildRoad1(int side){
-		Set<Cell> initRoadCells = new HashSet<Cell>();
-		
-		// Square strategy
-		int roadOffset = 10;
-		int topRow = roadOffset;
-		int bottomRow = side-roadOffset-1; // subtract extra 1 for indexing
-		int leftColumn = roadOffset;
-		int rightColumn = side-roadOffset-1;
-
-		for (int i=0; i<40; i++)
-		{
-			initRoadCells.add(new Cell(topRow, i));
-		}
-		for (int i=11; i<40; i++)
-		{
-			initRoadCells.add(new Cell(i, rightColumn));	
-		}
-		for (int i=38; i>9; i--)
-		{
-			initRoadCells.add(new Cell(bottomRow, i));
-		}
-		for (int i=38; i>9; i--)
-		{
-			initRoadCells.add(new Cell(i, leftColumn));
-		}
-		return initRoadCells;
-    }
-
-	private int objective(Set<Cell> shiftedCells, Land land) {
-		int edge_increase = 0; // the increase of new edge: the less, the better
-		for (Cell shiftedCell : shiftedCells) {
-			for (Cell adjCell : shiftedCell.neighbors()) {
-				if (!shiftedCells.contains(adjCell) && land.unoccupied(adjCell))
-					edge_increase += 1;
-				if (!shiftedCells.contains(adjCell) && !land.unoccupied(adjCell))
-					edge_increase -= 2;
-			}
-		}
-		return edge_increase;
 	}
 
 	private ArrayList<Move> findBuildableMoves(Building request, Land land) {
@@ -130,6 +87,19 @@ public class Player implements pentos.sim.Player {
 		return shiftedCells;
 	}
 
+	private int edgeIncrease(Set<Cell> shiftedCells, Land land) {
+		int edge_increase = 0; // the increase of new edge: the less, the better
+		for (Cell shiftedCell : shiftedCells) {
+			for (Cell adjCell : shiftedCell.neighbors()) {
+				if (!shiftedCells.contains(adjCell) && land.unoccupied(adjCell))
+					edge_increase += 1;
+				if (!shiftedCells.contains(adjCell) && !land.unoccupied(adjCell))
+					edge_increase -= 2;
+			}
+		}
+		return edge_increase;
+	}
+
 	private ArrayList<Integer> findObjectiveOfMoves(ArrayList<Move> moves, Land land, Building request) {
 		ArrayList<Integer> objs = new ArrayList<Integer> ();
 		int i = 0;
@@ -137,8 +107,7 @@ public class Player implements pentos.sim.Player {
 			Set<Cell> shiftedCells = shiftedCellsFromMove(move);
 			int obj = 0;
 			obj += (request.type == Building.Type.FACTORY ? i : -i);
-			obj += 100 * objective(shiftedCells, land);
-			// obj = findShortestRoad(shiftedCells, land) == null ? obj : Integer.MAX_VALUE;
+			obj += 100 * edgeIncrease(shiftedCells, land);
 			// include other objective functions
 			objs.add(obj);
 			i += 1;
@@ -153,12 +122,12 @@ public class Player implements pentos.sim.Player {
 		int[] objIndex = new int[n];
 		int[] objValue = new int[n];
 		ArrayList<Integer> objList = new ArrayList<Integer> ();
-		for (j = 0; j<n; j++) {
+		for (j = 0; j < n; j++) {
 			objIndex[j] = 0;
 			objValue[j] = Integer.MAX_VALUE;
 		}
 		for (Integer obj : objs) {
-			for (j = n-1; j>=0; j--) {
+			for (j = n-1; j >= 0; j--) {
 				if (obj < objValue[j]) {
 					if (j != n-1) {
 						objValue[j+1] = objValue[j];
@@ -176,38 +145,56 @@ public class Player implements pentos.sim.Player {
 		return objList;
 	}
 
+	private boolean isReached(Set<Cell> cells, Land land) {
+		for (int z=0; z<land.side; z++) {
+			if (
+				cells.contains(new Cell(0, z)) || 
+				cells.contains(new Cell(z, 0)) || 
+				cells.contains(new Cell(land.side-1, z)) || 
+				cells.contains(new Cell(z, land.side-1))
+			) {
+				return true;
+			}		
+		}
+		for (Cell cell : cells) {
+			for (Cell adjCell : cell.neighbors()) {
+				if (adjCell.isRoad()) return true;
+			}
+		}
+		return false;
+	}
 
 	// build shortest sequence of road cells to connect to a set of cells b
 	private Set<Cell> findShortestRoad(Set<Cell> b, Land land) {
 		Set<Cell> output = new HashSet<Cell>();
 		boolean[][] checked = new boolean[land.side][land.side];
 		Queue<Cell> queue = new LinkedList<Cell>();
-		// add border cells that don't have a road currently
-		Cell source = new Cell(Integer.MAX_VALUE,Integer.MAX_VALUE); // dummy cell to serve as road connector to perimeter cells
+
+		if (isReached(b, land)) return output;
+
+		Cell source = new Cell(Integer.MAX_VALUE,Integer.MAX_VALUE); 
 		for (int z=0; z<land.side; z++) {
-			if (b.contains(new Cell(0,z)) || b.contains(new Cell(z,0)) || b.contains(new Cell(land.side-1,z)) || b.contains(new Cell(z,land.side-1))) //if already on border don't build any roads
-				return output;
-			if (land.unoccupied(0,z))
-				queue.add(new Cell(0,z,source));
-			if (land.unoccupied(z,0))
-				queue.add(new Cell(z,0,source));
-			if (land.unoccupied(z,land.side-1))
-				queue.add(new Cell(z,land.side-1,source));
-			if (land.unoccupied(land.side-1,z))
-				queue.add(new Cell(land.side-1,z,source));
+			if (land.unoccupied(0, z))
+				queue.add(new Cell(0, z, source));
+			if (land.unoccupied(z, 0))
+				queue.add(new Cell(z, 0, source));
+			if (land.unoccupied(z, land.side-1))
+				queue.add(new Cell(z, land.side-1, source));
+			if (land.unoccupied(land.side-1, z))
+				queue.add(new Cell(land.side-1, z, source));
 		}
 		// add cells adjacent to current road cells
 		for (Cell p : road_cells) {
 			for (Cell q : p.neighbors()) {
 				if (!road_cells.contains(q) && land.unoccupied(q) && !b.contains(q)) 
-					queue.add(new Cell(q.i,q.j,p)); // use tail field of cell to keep track of previous road cell during the search
+					queue.add(new Cell(q.i, q.j, p)); 
 			}
 		}
 		while (!queue.isEmpty()) {
 			Cell p = queue.remove();
 			checked[p.i][p.j] = true;
 			for (Cell x : p.neighbors()) {		
-				if (b.contains(x)) { // trace back through search tree to find path
+				if (b.contains(x)) { 
 					Cell tail = p;
 					while (!b.contains(tail) && !road_cells.contains(tail) && !tail.equals(source)) {
 						output.add(new Cell(tail.i,tail.j));
