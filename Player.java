@@ -64,15 +64,17 @@ public class Player implements pentos.sim.Player {
 	//build the roads based on size of land
     private Set<Cell> buildRoad1(int side){
 		Set<Cell> initRoadCells = new HashSet<Cell>();
+		
+		// Square strategy
 		int roadOffset = 10;
-		int bottomRow = roadOffset;
-		int topRow = side-roadOffset-1; // subtract extra 1 for indexing
+		int topRow = roadOffset;
+		int bottomRow = side-roadOffset-1; // subtract extra 1 for indexing
 		int leftColumn = roadOffset;
 		int rightColumn = side-roadOffset-1;
 
 		for (int i=0; i<40; i++)
 		{
-			initRoadCells.add(new Cell(bottomRow, i));
+			initRoadCells.add(new Cell(topRow, i));
 		}
 		for (int i=11; i<40; i++)
 		{
@@ -80,7 +82,7 @@ public class Player implements pentos.sim.Player {
 		}
 		for (int i=38; i>9; i--)
 		{
-			initRoadCells.add(new Cell(topRow, i));
+			initRoadCells.add(new Cell(bottomRow, i));
 		}
 		for (int i=38; i>9; i--)
 		{
