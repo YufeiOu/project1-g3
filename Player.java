@@ -12,6 +12,7 @@ public class Player implements pentos.sim.Player {
 	// private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
 	private boolean road_built;
+	private final int NUMBER_OF_RETRY = 10;
 
 
 	public void init() { // function is called once at the beginning before play is called
@@ -26,7 +27,7 @@ public class Player implements pentos.sim.Player {
 		
 		// find all objective function values of each move, means "how good the move is"
 		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
-		ArrayList<Integer> indexes = findSmallestObjs(objs, 10);
+		ArrayList<Integer> indexes = findSmallestObjs(objs, NUMBER_OF_RETRY);
 		
 		Move chosen = new Move(false);
 		Set<Cell> shiftedCells = new HashSet<Cell>();
@@ -42,9 +43,7 @@ public class Player implements pentos.sim.Player {
 		if (!road_built) {
 			roadCells = buildRoad1(land.side);
 			road_built = true;
-		} else {
-			roadCells = findShortestRoad(shiftedCells, land);
-		}
+		} 
 		
 		if (roadCells != null) {
 			chosen.road = roadCells;
