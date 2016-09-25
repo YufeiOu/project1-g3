@@ -11,9 +11,88 @@ public class Player implements pentos.sim.Player {
 
 	// private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
+	private boolean road_built;
+
 
 	public void init() { // function is called once at the beginning before play is called
+		this.road_built = false;
 	}
+
+	public Move play(Building request, Land land) {
+		// find all valid building locations and orientations
+		ArrayList<Move> moves = findBuildableMoves(request, land);
+
+		if (moves.isEmpty()) return new Move(false);
+		
+		// find all objective function values of each move, means "how good the move is"
+		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
+		ArrayList<Integer> indexes = findSmallestObjs(objs, 10);
+		
+		Move chosen = new Move(false);
+		Set<Cell> shiftedCells = new HashSet<Cell>();
+		Set<Cell> roadCells = new HashSet<Cell>();
+		
+		for (Integer index : indexes) {
+			chosen = moves.get(index);
+			shiftedCells = shiftedCellsFromMove(chosen);
+			roadCells = findShortestRoad(shiftedCells, land);
+			if (roadCells != null) break;
+		}
+
+		if (!road_built) {
+			roadCells = buildRoad1(land.side);
+			road_built = true;
+		} else {
+			roadCells = findShortestRoad(shiftedCells, land);
+		}
+		
+		if (roadCells != null) {
+			chosen.road = roadCells;
+			road_cells.addAll(roadCells);
+			/*
+			if (request.type == Building.Type.RESIDENCE) { // for residences, build random ponds and fields connected to it
+				Set<Cell> markedForConstruction = new HashSet<Cell>();
+				markedForConstruction.addAll(roadCells);
+				chosen.water = randomWalk(shiftedCells, markedForConstruction, land, 4);
+				markedForConstruction.addAll(chosen.water);
+				chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
+			}
+			*/
+			return chosen;
+		} else {
+			return new Move(false);
+		}
+	}
+
+	//build the roads based on size of land
+    private Set<Cell> buildRoad1(int side){
+		Set<Cell> initRoadCells = new HashSet<Cell>();
+		
+		// Square strategy
+		int roadOffset = 10;
+		int topRow = roadOffset;
+		int bottomRow = side-roadOffset-1; // subtract extra 1 for indexing
+		int leftColumn = roadOffset;
+		int rightColumn = side-roadOffset-1;
+
+		for (int i=0; i<40; i++)
+		{
+			initRoadCells.add(new Cell(topRow, i));
+		}
+		for (int i=11; i<40; i++)
+		{
+			initRoadCells.add(new Cell(i, rightColumn));	
+		}
+		for (int i=38; i>9; i--)
+		{
+			initRoadCells.add(new Cell(bottomRow, i));
+		}
+		for (int i=38; i>9; i--)
+		{
+			initRoadCells.add(new Cell(i, leftColumn));
+		}
+		return initRoadCells;
+    }
 
 	private int objective(Set<Cell> shiftedCells, Land land) {
 		int edge_increase = 0; // the increase of new edge: the less, the better
@@ -98,44 +177,6 @@ public class Player implements pentos.sim.Player {
 		return objList;
 	}
 
-	public Move play(Building request, Land land) {
-		// find all valid building locations and orientations
-		ArrayList<Move> moves = findBuildableMoves(request, land);
-
-		if (moves.isEmpty()) return new Move(false);
-		
-		// find all objective function values of each move, means "how good the move is"
-		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
-		ArrayList<Integer> indexes = findSmallestObjs(objs, 10);
-		
-		Move chosen = new Move(false);
-		Set<Cell> shiftedCells = new HashSet<Cell>();
-		Set<Cell> roadCells = new HashSet<Cell>();
-
-		for (Integer index : indexes) {
-			chosen = moves.get(index);
-			shiftedCells = shiftedCellsFromMove(chosen);
-			roadCells = findShortestRoad(shiftedCells, land);
-			if (roadCells != null) break;
-		}
-		
-		if (roadCells != null) {
-			chosen.road = roadCells;
-			road_cells.addAll(roadCells);
-			/*
-			if (request.type == Building.Type.RESIDENCE) { // for residences, build random ponds and fields connected to it
-				Set<Cell> markedForConstruction = new HashSet<Cell>();
-				markedForConstruction.addAll(roadCells);
-				chosen.water = randomWalk(shiftedCells, markedForConstruction, land, 4);
-				markedForConstruction.addAll(chosen.water);
-				chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
-			}
-			*/
-			return chosen;
-		} else {
-			return new Move(false);
-		}
-	}
 
 	// build shortest sequence of road cells to connect to a set of cells b
 	private Set<Cell> findShortestRoad(Set<Cell> b, Land land) {
