@@ -15,12 +15,8 @@ public class Player implements pentos.sim.Player {
 	public void init() { // function is called once at the beginning before play is called
 	}
 
-	private int objective(Building building, Cell cell, Land land) {
-		int edge_increase = 0;
-		Set<Cell> shiftedCells = new HashSet<Cell>();
-		for (Cell b : building) {
-			shiftedCells.add(new Cell(b.i + cell.i, b.j + cell.j) );
-		}
+	private int objective(Set<Cell> shiftedCells, Land land) {
+		int edge_increase = 0; // the increase of new edge: the less, the better
 
 		for (Cell shiftedCell : shiftedCells) {
 			for (Cell adjCell : shiftedCell.neighbors()) {
@@ -34,12 +30,8 @@ public class Player implements pentos.sim.Player {
 		return edge_increase;
 	}
 
-	public Move play(Building request, Land land) {
-		// find all valid building locations and orientations
-		ArrayList <Move> moves = new ArrayList<Move> ();
-		ArrayList<Integer> obj = new ArrayList<Integer>();
-		int min_obj = 10000;
-
+	private ArrayList<Move> findBuildableMoves(Building request, Land land) {
+		ArrayList<Move> moves = new ArrayList<Move> ();
 		for (int i = 0 ; i < land.side ; i++) {
 			for (int j = 0 ; j < land.side ; j++) {
 				Cell p = new Cell(i, j);
@@ -48,66 +40,68 @@ public class Player implements pentos.sim.Player {
 					Building b = rotations[ri];
 					if (land.buildable(b, p)) {
 						moves.add(new Move(true, request, p, ri, new HashSet<Cell>(), new HashSet<Cell>(), new HashSet<Cell>()));
-						int tmp = objective(b, p, land);
-						obj.add(tmp);
-						min_obj = Math.min(min_obj, tmp);
 					}
 				}
 			}
 		}
-		
+		return moves;
+	}
 
+	private Set<Cell> shiftedCellsFromMove(Move move) {
+		Set<Cell> shiftedCells = new HashSet<Cell>();
+		for (Cell x : move.request.rotations()[move.rotation])
+			shiftedCells.add(new Cell(x.i+move.location.i,x.j+move.location.j));
+		return shiftedCells;
+	}
 
-		if (moves.isEmpty()) { // reject if no valid placements
-			return new Move(false);
+	private ArrayList<Integer> findObjectiveOfMoves(ArrayList<Move> moves, Land land, Building request) {
+		ArrayList<Integer> objs = new ArrayList<Integer> ();
+		int i = 0;
+		for (Move move : moves) {
+			Set<Cell> shiftedCells = shiftedCellsFromMove(move);
+			int obj = 0;
+			obj += (request.type == Building.Type.FACTORY ? i : -i);
+			obj += 100 * objective(shiftedCells, land);
+			// obj = findShortestRoad(shiftedCells, land) == null ? obj : Integer.MAX_VALUE;
+			// include other objective functions
+			objs.add(obj);
+			i += 1;
 		}
-		else {
-			int i = 0;
-			int j = moves.size()-1;
-			Set<Cell> roadCells = null;
-			Move chosen = new Move(false);
 
-			int k = 0;
-			if (request.type == Building.Type.FACTORY)
-			for (k = 0; k < moves.size(); k++) {
-				if (obj.get(k) == min_obj) {
-					chosen = moves.get(k);
-					Set<Cell> shiftedCells = new HashSet<Cell>();
-					for (Cell x : chosen.request.rotations()[chosen.rotation])
-						shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
-						// builda road to connect this building to perimeter
-					roadCells = findShortestRoad(shiftedCells, land);
-					break;
-				}
-			}
-			else
-			for (k = moves.size()-1; k >=0 ; k--) {
-				if (obj.get(k) == min_obj) {
-					chosen = moves.get(k);
-					Set<Cell> shiftedCells = new HashSet<Cell>();
-					for (Cell x : chosen.request.rotations()[chosen.rotation])
-						shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
-						// builda road to connect this building to perimeter
-					roadCells = findShortestRoad(shiftedCells, land);
-					break;
-				}
-			}
+		return objs;
+	}
 
-			while (roadCells == null && i <= j) {
-				chosen = request.type == Building.Type.FACTORY ? moves.get(i) : moves.get(j);
-				// get coordinates of building placement (position plus local building cell coordinates)
-				Set<Cell> shiftedCells = new HashSet<Cell>();
-				for (Cell x : chosen.request.rotations()[chosen.rotation])
-					shiftedCells.add(new Cell(x.i+chosen.location.i,x.j+chosen.location.j));
-				// builda road to connect this building to perimeter
-				roadCells = findShortestRoad(shiftedCells, land);
-				if (request.type == Building.Type.FACTORY) i++;
-				else j--;
+	private int findSmallestObj(ArrayList<Integer> objs) {
+		int index = 0;
+		int i = 0;
+		int min_value = Integer.MAX_VALUE;
+		for (Integer obj : objs) {
+			if (min_value > obj) {
+				min_value = obj;
+				index = i;
 			}
+			i += 1;
+		}
+		return index;
+	}
+
+	public Move play(Building request, Land land) {
+		// find all valid building locations and orientations
+		ArrayList<Move> moves = findBuildableMoves(request, land);
+
+		if (moves.isEmpty()) return new Move(false);
+		
+		// find all objective function values of each move, means "how good the move is"
+		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
+		int index = findSmallestObj(objs);
+		
+		Move chosen = moves.get(index);
+		Set<Cell> shiftedCells = shiftedCellsFromMove(chosen);
+		Set<Cell> roadCells = findShortestRoad(shiftedCells, land);
 			
-			if (roadCells != null) {
-				chosen.road = roadCells;
-				road_cells.addAll(roadCells);
+		if (roadCells != null) {
+			chosen.road = roadCells;
+			road_cells.addAll(roadCells);
 				/*
 				if (request.type == Building.Type.RESIDENCE) { // for residences, build random ponds and fields connected to it
 					Set<Cell> markedForConstruction = new HashSet<Cell>();
@@ -117,17 +111,9 @@ public class Player implements pentos.sim.Player {
 					chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
 				}
 				*/
-				return chosen;
-			}
-			else { // reject placement if building cannot be connected by road
-				// debug
-				System.out.println();
-				System.out.println(moves.size());
-				System.out.println(roadCells == null);
-				System.out.println(request.type);
-				
-				return new Move(false);
-			}
+			return chosen;
+		} else {
+			return new Move(false);
 		}
 	}
 
