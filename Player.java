@@ -156,9 +156,9 @@ public class Player implements pentos.sim.Player {
 				return true;
 			}		
 		}
-		for (Cell cell : cells) {
-			for (Cell adjCell : cell.neighbors()) {
-				if (adjCell.isRoad()) return true;
+		for (Cell p : road_cells) {
+			for (Cell q : p.neighbors()) {
+				if (cells.contains(q)) return true;
 			}
 		}
 		return false;
