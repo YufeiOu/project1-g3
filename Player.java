@@ -220,7 +220,7 @@ public class Player implements pentos.sim.Player {
 	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode) {
 		// if (mode == 1) return yufeiWalk(b, marked, land, n);
 		// if (mode == 2) return frankWalk(b, marked, land, n);
-		// if (mode == 3) return shardendu(b, marked, land, n);
+		// if (mode == 3) return shardenduWalk(b, marked, land, n);
 		return randomWalk(b, marked, land, n);
 	}
 	private Set<Cell> randomWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
