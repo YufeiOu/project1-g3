@@ -9,7 +9,7 @@ import java.util.*;
 
 public class Player implements pentos.sim.Player {
 
-	// private Random gen = new Random();
+	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
 	private boolean road_built;
 	private final int NUMBER_OF_RETRY = 10;
@@ -48,15 +48,15 @@ public class Player implements pentos.sim.Player {
 		if (roadCells != null) {
 			chosen.road = roadCells;
 			road_cells.addAll(roadCells);
-			/*
+			
 			if (request.type == Building.Type.RESIDENCE) { // for residences, build random ponds and fields connected to it
 				Set<Cell> markedForConstruction = new HashSet<Cell>();
 				markedForConstruction.addAll(roadCells);
-				chosen.water = randomWalk(shiftedCells, markedForConstruction, land, 4);
-				markedForConstruction.addAll(chosen.water);
-				chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
+				chosen.water = walkAndBuild(shiftedCells, markedForConstruction, land, 4, 0);
+				// markedForConstruction.addAll(chosen.water);
+				// chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
 			}
-			*/
+			
 			return chosen;
 		} else {
 			return new Move(false);
@@ -215,8 +215,14 @@ public class Player implements pentos.sim.Player {
 			return output;
     }
 
-	/*
-	// walk n consecutive cells starting from a building. Used to build a random field or pond. 
+	
+	// walk n consecutive cells starting from a building. Used to build a random field or pond.
+	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode) {
+		// if (mode == 1) return yufeiWalk(b, marked, land, n);
+		// if (mode == 2) return frankWalk(b, marked, land, n);
+		// if (mode == 3) return shardendu(b, marked, land, n);
+		return randomWalk(b, marked, land, n);
+	}
 	private Set<Cell> randomWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
 		Set<Cell> output = new HashSet<Cell>();
@@ -247,5 +253,5 @@ public class Player implements pentos.sim.Player {
 		}
 		return output;
 	}
-	*/
+	
 }
