@@ -309,7 +309,7 @@ public class Player implements pentos.sim.Player {
 		if (!possibleChoices.isEmpty()) {
 			ArrayList<Integer> objs = new ArrayList<Integer>();
 			for (Set<Cell> choice : possibleChoices) {
-				objs.add(benefit(b, marked, land, choice));
+				objs.add(punishment(b, marked, land, choice));
 			}
 			ArrayList<Integer> index = findSmallestObjs(objs, 1);
 			potentialWater = possibleChoices.get(index.get(0));
@@ -338,7 +338,7 @@ public class Player implements pentos.sim.Player {
 		return area;
 	}
 
-	private int benefit(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
+	private int punishment(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
 		int punish = 0;
 		// punish when take too much space
 		punish += potential.size();
@@ -360,7 +360,7 @@ public class Player implements pentos.sim.Player {
 		}
 
 		// punish when ...
-		
+
 		return punish;
 	}
 
