@@ -11,6 +11,7 @@ public class Player implements pentos.sim.Player {
 
 	private int WATER = 0;
 	private int PARK = 1;
+	private static final int RESIDENCESIZE = 5;
 	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
 	private boolean road_built;
@@ -291,23 +292,75 @@ public class Player implements pentos.sim.Player {
 
 	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode) {
 		Set<Cell> potentialWater = new HashSet<Cell>();
+		ArrayList<Set<Cell>> possibleChoices = new ArrayList<Set<Cell>>();
 		int pondDistance = findNearbyPondDistance(b, marked, land);
 		if (pondDistance == 0) {
 			;
 		} else if (pondDistance == 1 || pondDistance == 2) {					
-			ArrayList<Set<Cell>> possibleChoice = givenShortLengthWalks(b, marked, land, pondDistance, this.WATER);
-			potentialWater = possibleChoice.get(0);
+			possibleChoices = givenShortLengthWalks(b, marked, land, pondDistance, this.WATER);
 		} else {
-			potentialWater = randomWalk(b, marked, land, n);
+			for (int i=1; i<30; i++) {
+				possibleChoices.add(randomWalk(b, marked, land, n));
+			}
+			// possibleChoices.addAll(frankWalk());
+			// possibleChoices.addAll(shardenduWalk());
+		}
+
+		if (!possibleChoices.isEmpty()) {
+			ArrayList<Integer> objs = new ArrayList<Integer>();
+			for (Set<Cell> choice : possibleChoices) {
+				objs.add(benefit(b, marked, land, choice));
+			}
+			ArrayList<Integer> index = findSmallestObjs(objs, 1);
+			potentialWater = possibleChoices.get(index.get(0));
 		}
 		return potentialWater;
 	}
 
+	private int findConnectedArea(Cell q, Set<Cell> marked, Land land, int upperBound) {
+		if (!land.unoccupied(q)) return 0;
+		Queue<Cell> queue = new LinkedList<Cell>();
+		Set<Cell> record = new HashSet<Cell>();
+		int area = 1;
+		int upper = upperBound <= 0 ? Integer.MAX_VALUE : upperBound;
+		queue.add(q);
+		record.add(q);
+		while (!queue.isEmpty()) {
+			Cell r = queue.remove();
+			for (Cell s : r.neighbors()) {
+				if (record.contains(s) || marked.contains(s) || !land.unoccupied(s)) continue;
+				queue.add(s);
+				record.add(s);
+				area += 1;
+				if (area >= upper) return upper;
+			}
+		}
+		return area;
+	}
+
 	private int benefit(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
 		int punish = 0;
+		// punish when take too much space
+		punish += potential.size();
+
 		// punish when useless wholes appear
-		// punish when repeatedly build the same facility
+		int oldConnectedArea = 0;
+		int newConnectedArea = 0;
+		Set<Cell> oldMarked = new HashSet<Cell>(marked);
+		Set<Cell> newMarked = new HashSet<Cell>(marked);
+		oldMarked.addAll(b);
+		newMarked.addAll(b); newMarked.addAll(potential);
+		for (Cell p : potential) {
+			for (Cell q : p.neighbors()) {
+				if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
+				oldConnectedArea = findConnectedArea(q, oldMarked, land, this.RESIDENCESIZE);
+				newConnectedArea = findConnectedArea(q, newMarked, land, this.RESIDENCESIZE);
+				punish += (oldConnectedArea == 5 && newConnectedArea < 5) ? 2 : 0;
+			}
+		}
+
 		// punish when ...
+		
 		return punish;
 	}
 
