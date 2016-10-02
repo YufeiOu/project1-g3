@@ -48,15 +48,19 @@ public class Player implements pentos.sim.Player {
 		if (roadCells != null) {
 			chosen.road = roadCells;
 			road_cells.addAll(roadCells);
-			
-			if (request.type == Building.Type.RESIDENCE) { // for residences, build random ponds and fields connected to it
+			// for residences, build clever ponds and fields connected to it
+			if (request.type == Building.Type.RESIDENCE) { 
+
 				Set<Cell> markedForConstruction = new HashSet<Cell>();
 				markedForConstruction.addAll(roadCells);
-				chosen.water = walkAndBuild(shiftedCells, markedForConstruction, land, 4, 0);
-				// markedForConstruction.addAll(chosen.water);
-				// chosen.park = randomWalk(shiftedCells, markedForConstruction, land, 4);
+
+				Set<Cell> potentialWater = placeWater(shiftedCells, markedForConstruction, land);
+				chosen.water = potentialWater;
+
+				markedForConstruction.addAll(chosen.water);
+				Set<Cell> potentialPark = new HashSet<Cell>();
+				chosen.park = potentialPark;
 			}
-			
 			return chosen;
 		} else {
 			return new Move(false);
@@ -223,6 +227,97 @@ public class Player implements pentos.sim.Player {
 		// if (mode == 3) return shardenduWalk(b, marked, land, n);
 		return randomWalk(b, marked, land, n);
 	}
+
+	private int findNearbyPondDistance(Set<Cell> b, Set<Cell> marked, Land land) {
+		// return 0,1,2 to indicate we can add 0,1,2 water to reach the pond, return -1 to indicate no nearby facility exist
+		Set<Cell> distance1 = new HashSet<Cell>();
+		Set<Cell> distance2 = new HashSet<Cell>();
+		for (Cell p : b) {
+			for (Cell q : p.neighbors()) {
+				if (land.isPond(q)) return 0;
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q)) distance1.add(q);
+			}
+		}
+		for (Cell p : distance1) {
+			for (Cell q : p.neighbors()) {
+				if (land.isPond(q)) return 1;
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q) && !distance1.contains(q)) distance2.add(q);
+			}
+		}
+		for (Cell p : distance2) {
+			for (Cell q : p.neighbors()) {
+				if (land.isPond(q)) return 2;
+			}
+		}
+		return -1;
+	}
+
+	private ArrayList<Set<Cell>> allWalks(Set<Cell> b, Set<Cell> marked, Land land, int walks) {
+		ArrayList<Set<Cell>> traces = new ArrayList<Set<Cell>>();
+		Set<Cell> walkTrace = new HashSet<Cell>();
+		Set<Cell> updatedMarked = new HashSet<Cell>(marked);
+		updatedMarked.addAll(b);
+		if (walks == 1) {
+			for (Cell p : b) {
+				for (Cell q : p.neighbors()) {
+					if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q)) {
+						walkTrace.add(q);
+						if (findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
+							Set<Cell> trace = new HashSet<Cell>(walkTrace);
+							traces.add(trace);
+						}		
+						walkTrace.remove(q);
+					}
+				}
+			}
+			return traces;
+		}
+		if (walks == 2) {
+			for (Cell p : b) {
+				for (Cell q : p.neighbors()) {
+					if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q)) {
+						walkTrace.add(q);
+						for (Cell r : q.neighbors()) {
+							if (!b.contains(r) && !marked.contains(r) && land.unoccupied(r)) {
+								walkTrace.add(r);
+								if (findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
+									Set<Cell> trace = new HashSet<Cell>(walkTrace);
+									traces.add(trace);
+								}
+								walkTrace.remove(r);
+							}
+						}
+						walkTrace.remove(q);
+					}
+				}
+			}
+			return traces;
+		}
+		return traces;
+	}
+
+	private Set<Cell> placeWater(Set<Cell> shiftedCells, Set<Cell> markedForConstruction, Land land) {
+		Set<Cell> potentialWater = new HashSet<Cell>();
+		int pondDistance = findNearbyPondDistance(shiftedCells, markedForConstruction, land);
+		if (pondDistance == 0) {
+			;
+		} else if (pondDistance == 1 || pondDistance == 2) {					
+			ArrayList<Set<Cell>> possibleChoice = allWalks(shiftedCells, markedForConstruction, land, pondDistance);
+			potentialWater = possibleChoice.get(0);
+		} else {
+			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, 0);
+		}
+		return potentialWater;
+	}
+
+	private int benefit(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
+		int punish = 0;
+		// punish when useless wholes appear
+		// punish when repeatedly build the same facility
+		// punish when ...
+		return punish;
+	}
+
 	private Set<Cell> randomWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
 		Set<Cell> output = new HashSet<Cell>();
