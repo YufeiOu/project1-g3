@@ -1,3 +1,4 @@
+
 package pentos.g3;
 
 import pentos.sim.Cell;
@@ -303,7 +304,7 @@ public class Player implements pentos.sim.Player {
 				possibleChoices.add(randomWalk(b, marked, land, n));
 			}
 			// possibleChoices.addAll(frankWalk());
-			// possibleChoices.addAll(shardenduWalk());
+		     possibleChoices.addAll(shardenduWalk(b,marked,land,4));
 		}
 
 		if (!possibleChoices.isEmpty()) {
@@ -337,6 +338,66 @@ public class Player implements pentos.sim.Player {
 		}
 		return area;
 	}
+
+		private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+		ArrayList<Cell> adjCells = new ArrayList<Cell>();
+		for (Cell p : b) {
+			for (Cell q : p.neighbors()) {
+				if (land.isField(q) || land.isPond(q))
+					return new ArrayList<Set<Cell>>();
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q))
+					adjCells.add(q); 
+			}
+		}
+		if (adjCells.isEmpty()) {
+			return new ArrayList<Set<Cell>>();
+		}
+		ArrayList<Set<Cell>> WeightCheck=new ArrayList<Set<Cell>>();
+		for (Cell squarewalk : adjCells){
+					Set<Cell> output = new HashSet<Cell>();
+
+		if (squarewalk.i+1 < land.side && squarewalk.i-1 > 0 && squarewalk.j-1 > 0 && squarewalk.j+1 < land.side){
+		Cell a = new Cell(squarewalk.i,squarewalk.j);
+		Cell q = new Cell(squarewalk.i-1,squarewalk.j-1);
+		Cell c = new Cell(squarewalk.i,squarewalk.j-1);
+		Cell d = new Cell(squarewalk.i-1,squarewalk.j);
+		if (land.unoccupied(squarewalk.i,squarewalk.j) && !b.contains(a) && !b.contains(q) && !b.contains(c) && !b.contains(d) && !marked.contains(a)  && !marked.contains(q) && !marked.contains(c) && !marked.contains(d)  && land.unoccupied(squarewalk.i-1,squarewalk.j-1) && land.unoccupied(squarewalk.i,squarewalk.j-1) && land.unoccupied(squarewalk.i-1,squarewalk.j)){
+			output.add(a);
+			output.add(q);
+			output.add(c);
+			output.add(d);
+			WeightCheck.add(output);
+		}
+		
+	}
+	}
+	 return WeightCheck;
+	}
+
+	private Set<Cell> checkPondWeight(Set <Set<Cell>> pond, Land land){
+		Set<Cell> output = new HashSet<Cell>();
+		int min = 0;
+		for (Set<Cell> names : pond) {
+			int edge_increase = 0;
+			for (Cell waterCell : names) {
+					for (Cell adjCell : waterCell.neighbors()){
+				if (!land.unoccupied(adjCell))
+					edge_increase += 1;
+				if (land.unoccupied(adjCell))
+					edge_increase -= 2;
+			}
+    			}
+    		if (edge_increase < min){
+    			min = edge_increase;
+    			output = names;
+    		}
+
+
+		}
+		return output;
+	}
+
+
 
 	private int punishment(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
 		int punish = 0;
@@ -396,3 +457,4 @@ public class Player implements pentos.sim.Player {
 	}
 	
 }
+
