@@ -56,7 +56,7 @@ public class Player implements pentos.sim.Player {
 				Set<Cell> markedForConstruction = new HashSet<Cell>();
 				markedForConstruction.addAll(roadCells);
 
-				Set<Cell> potentialWater = placeWater(shiftedCells, markedForConstruction, land);
+				Set<Cell> potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER);
 				chosen.water = potentialWater;
 
 				markedForConstruction.addAll(chosen.water);
@@ -221,15 +221,6 @@ public class Player implements pentos.sim.Player {
 			return output;
     }
 
-	
-	// walk n consecutive cells starting from a building. Used to build a random field or pond.
-	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode) {
-		// if (mode == 1) return yufeiWalk(b, marked, land, n);
-		// if (mode == 2) return frankWalk(b, marked, land, n);
-		// if (mode == 3) return shardenduWalk(b, marked, land, n);
-		return randomWalk(b, marked, land, n);
-	}
-
 	private int findNearbyPondDistance(Set<Cell> b, Set<Cell> marked, Land land) {
 		// return 0,1,2 to indicate we can add 0,1,2 water to reach the pond, return -1 to indicate no nearby facility exist
 		Set<Cell> distance1 = new HashSet<Cell>();
@@ -297,16 +288,16 @@ public class Player implements pentos.sim.Player {
 		return traces;
 	}
 
-	private Set<Cell> placeWater(Set<Cell> shiftedCells, Set<Cell> markedForConstruction, Land land) {
+	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode) {
 		Set<Cell> potentialWater = new HashSet<Cell>();
-		int pondDistance = findNearbyPondDistance(shiftedCells, markedForConstruction, land);
+		int pondDistance = findNearbyPondDistance(b, marked, land);
 		if (pondDistance == 0) {
 			;
 		} else if (pondDistance == 1 || pondDistance == 2) {					
-			ArrayList<Set<Cell>> possibleChoice = allWalks(shiftedCells, markedForConstruction, land, pondDistance, this.WATER);
+			ArrayList<Set<Cell>> possibleChoice = allWalks(b, marked, land, pondDistance, this.WATER);
 			potentialWater = possibleChoice.get(0);
 		} else {
-			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, 0);
+			potentialWater = randomWalk(b, marked, land, n);
 		}
 		return potentialWater;
 	}
