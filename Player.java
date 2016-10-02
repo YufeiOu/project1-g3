@@ -303,8 +303,8 @@ public class Player implements pentos.sim.Player {
 			for (int i=1; i<30; i++) {
 				possibleChoices.add(randomWalk(b, marked, land, n));
 			}
-			// possibleChoices.addAll(frankWalk());
-		     possibleChoices.addAll(shardenduWalk(b,marked,land,4));
+			possibleChoices.add(frankWalk(b, marked, land, n));
+			possibleChoices.addAll(shardenduWalk(b, marked, land, n));
 		}
 
 		if (!possibleChoices.isEmpty()) {
@@ -423,6 +423,59 @@ public class Player implements pentos.sim.Player {
 		// punish when ...
 
 		return punish;
+	}
+
+	private Set<Cell> frankWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+		ArrayList<Cell> adjCells = new ArrayList<Cell>();
+		Set<Cell> output = new HashSet<Cell>();
+		for (Cell p : b) {
+			for (Cell q : p.neighbors()) {
+				if (land.isField(q) || land.isPond(q))
+					return new HashSet<Cell>();
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q))
+					adjCells.add(q); 
+			}
+		}
+		if (adjCells.isEmpty()) {
+			return new HashSet<Cell>();
+		}
+		for (Cell tail : adjCells) {
+			ArrayList<Cell> walk_cells = new ArrayList<Cell>();
+			for (int ii=0; ii<n; ii++) {
+				if (!b.contains(tail) && !marked.contains(tail) && land.unoccupied(tail) && !output.contains(tail)) {
+					boolean crowded = false;
+					for (Cell c : tail.neighbors()) {
+						if (c.isPark() || c.isWater() || marked.contains(c)) {
+							crowded = true;
+						}
+					}
+					if (crowded) { 
+						output = new HashSet<Cell>();
+						break; 
+					}
+					walk_cells.add(tail);
+					output.add(tail);	
+				}
+				else {
+					output = new HashSet<Cell>();
+					break;
+				}
+				if (tail.i-1 < 0 && walk_cells.size() < 4) {
+					output = new HashSet<Cell>();
+					break;
+				}
+				Cell above = new Cell(tail.i-1, tail.j);
+				for (Cell p : tail.neighbors()) {
+					if (above.equals(p)) {
+						tail = p;
+					}
+				}
+			}
+			if (walk_cells.size() == 4) {
+				return output;
+			}
+		}
+		return output;	
 	}
 
 	private Set<Cell> randomWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
