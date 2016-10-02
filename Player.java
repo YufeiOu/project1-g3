@@ -9,6 +9,8 @@ import java.util.*;
 
 public class Player implements pentos.sim.Player {
 
+	private int WATER = 0;
+	private int PARK = 1;
 	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
 	private boolean road_built;
@@ -252,7 +254,7 @@ public class Player implements pentos.sim.Player {
 		return -1;
 	}
 
-	private ArrayList<Set<Cell>> allWalks(Set<Cell> b, Set<Cell> marked, Land land, int walks) {
+	private ArrayList<Set<Cell>> allWalks(Set<Cell> b, Set<Cell> marked, Land land, int walks, int type) {
 		ArrayList<Set<Cell>> traces = new ArrayList<Set<Cell>>();
 		Set<Cell> walkTrace = new HashSet<Cell>();
 		Set<Cell> updatedMarked = new HashSet<Cell>(marked);
@@ -260,14 +262,14 @@ public class Player implements pentos.sim.Player {
 		if (walks == 1) {
 			for (Cell p : b) {
 				for (Cell q : p.neighbors()) {
-					if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q)) {
-						walkTrace.add(q);
-						if (findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
-							Set<Cell> trace = new HashSet<Cell>(walkTrace);
-							traces.add(trace);
-						}		
-						walkTrace.remove(q);
+					if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
+					walkTrace.add(q);
+					if (type == this.WATER && findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
+						Set<Cell> trace = new HashSet<Cell>(walkTrace);
+						traces.add(trace);
 					}
+					// add park here	
+					walkTrace.remove(q);
 				}
 			}
 			return traces;
@@ -275,20 +277,19 @@ public class Player implements pentos.sim.Player {
 		if (walks == 2) {
 			for (Cell p : b) {
 				for (Cell q : p.neighbors()) {
-					if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q)) {
-						walkTrace.add(q);
-						for (Cell r : q.neighbors()) {
-							if (!b.contains(r) && !marked.contains(r) && land.unoccupied(r)) {
-								walkTrace.add(r);
-								if (findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
-									Set<Cell> trace = new HashSet<Cell>(walkTrace);
-									traces.add(trace);
-								}
-								walkTrace.remove(r);
-							}
+					if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
+					walkTrace.add(q);
+					for (Cell r : q.neighbors()) {
+						if (b.contains(r) || marked.contains(r) || !land.unoccupied(r)) continue;
+						walkTrace.add(r);
+						if (type == this.WATER && findNearbyPondDistance(walkTrace, updatedMarked, land) == 0) {
+							Set<Cell> trace = new HashSet<Cell>(walkTrace);
+							traces.add(trace);
 						}
-						walkTrace.remove(q);
+						// add park here
+						walkTrace.remove(r);
 					}
+					walkTrace.remove(q);
 				}
 			}
 			return traces;
@@ -302,7 +303,7 @@ public class Player implements pentos.sim.Player {
 		if (pondDistance == 0) {
 			;
 		} else if (pondDistance == 1 || pondDistance == 2) {					
-			ArrayList<Set<Cell>> possibleChoice = allWalks(shiftedCells, markedForConstruction, land, pondDistance);
+			ArrayList<Set<Cell>> possibleChoice = allWalks(shiftedCells, markedForConstruction, land, pondDistance, this.WATER);
 			potentialWater = possibleChoice.get(0);
 		} else {
 			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, 0);
