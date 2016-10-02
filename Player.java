@@ -300,11 +300,11 @@ public class Player implements pentos.sim.Player {
 		} else if (pondDistance == 1 || pondDistance == 2) {					
 			possibleChoices = givenShortLengthWalks(b, marked, land, pondDistance, this.WATER);
 		} else {
-			for (int i=1; i<30; i++) {
+			/*for (int i=1; i<30; i++) {
 				possibleChoices.add(randomWalk(b, marked, land, n));
-			}
-			possibleChoices.add(frankWalk(b, marked, land, n));
-			possibleChoices.addAll(shardenduWalk(b, marked, land, n));
+			}*/
+			possibleChoices.addAll(frankWalk(b, marked, land, n));
+			//possibleChoices.addAll(shardenduWalk(b, marked, land, n));
 		}
 
 		if (!possibleChoices.isEmpty()) {
@@ -425,24 +425,25 @@ public class Player implements pentos.sim.Player {
 		return punish;
 	}
 
-	private Set<Cell> frankWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+	private ArrayList<Set<Cell>> frankWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+		ArrayList<Set<Cell>> output = new ArrayList<Set<Cell>>();
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
-		Set<Cell> output = new HashSet<Cell>();
+		Set<Cell> set = new HashSet<Cell>();
 		for (Cell p : b) {
 			for (Cell q : p.neighbors()) {
 				if (land.isField(q) || land.isPond(q))
-					return new HashSet<Cell>();
+					return new ArrayList<Set<Cell>>();
 				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q))
 					adjCells.add(q); 
 			}
 		}
 		if (adjCells.isEmpty()) {
-			return new HashSet<Cell>();
+			return new ArrayList<Set<Cell>>();
 		}
 		for (Cell tail : adjCells) {
 			ArrayList<Cell> walk_cells = new ArrayList<Cell>();
 			for (int ii=0; ii<n; ii++) {
-				if (!b.contains(tail) && !marked.contains(tail) && land.unoccupied(tail) && !output.contains(tail)) {
+				if (!b.contains(tail) && !marked.contains(tail) && land.unoccupied(tail) && !set.contains(tail)) {
 					boolean crowded = false;
 					for (Cell c : tail.neighbors()) {
 						if (c.isPark() || c.isWater() || marked.contains(c)) {
@@ -450,18 +451,18 @@ public class Player implements pentos.sim.Player {
 						}
 					}
 					if (crowded) { 
-						output = new HashSet<Cell>();
+						set = new HashSet<Cell>();
 						break; 
 					}
 					walk_cells.add(tail);
-					output.add(tail);	
+					set.add(tail);	
 				}
 				else {
-					output = new HashSet<Cell>();
+					set = new HashSet<Cell>();
 					break;
 				}
 				if (tail.i-1 < 0 && walk_cells.size() < 4) {
-					output = new HashSet<Cell>();
+					set = new HashSet<Cell>();
 					break;
 				}
 				Cell above = new Cell(tail.i-1, tail.j);
@@ -472,7 +473,8 @@ public class Player implements pentos.sim.Player {
 				}
 			}
 			if (walk_cells.size() == 4) {
-				return output;
+				output.add(set);
+				set = new HashSet<Cell>();
 			}
 		}
 		return output;	
