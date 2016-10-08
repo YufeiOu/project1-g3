@@ -320,10 +320,14 @@ public class Player implements pentos.sim.Player {
 				possibleChoices = givenShortLengthWalks(b, marked, land, distance, this.PARK);
 			} 
 		} else {
-			/*for (int i=1; i<30; i++) {
-				possibleChoices.add(randomWalk(b, marked, land, n));
-			}*/
-			possibleChoices.addAll(frankWalk(b, marked, land, n));
+			ArrayList<Set<Cell>> frankWalkSetsOfCells = frankWalk(b, marked, land, n);
+			if (frankWalkSetsOfCells.size() > 0) {
+				possibleChoices.addAll(frankWalkSetsOfCells);
+			} else {
+				for (int i=1; i<30; i++) {
+					possibleChoices.add(randomWalk(b, marked, land, n));
+				}
+			}
 			//possibleChoices.addAll(shardenduWalk(b, marked, land, n));
 		}
 
@@ -333,7 +337,9 @@ public class Player implements pentos.sim.Player {
 				objs.add(punishment(b, marked, land, choice));
 			}
 			ArrayList<Integer> index = findSmallestObjs(objs, 1);
-			potentialPondOrPark = possibleChoices.get(index.get(0));
+
+			if (objs.get(index.get(0)) < 6)
+				potentialPondOrPark = possibleChoices.get(index.get(0));
 		}
 		return potentialPondOrPark;
 	}
@@ -359,7 +365,7 @@ public class Player implements pentos.sim.Player {
 		return area;
 	}
 
-		private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+	private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
 		for (Cell p : b) {
 			for (Cell q : p.neighbors()) {
@@ -373,8 +379,8 @@ public class Player implements pentos.sim.Player {
 			return new ArrayList<Set<Cell>>();
 		}
 		ArrayList<Set<Cell>> WeightCheck=new ArrayList<Set<Cell>>();
-		for (Cell squarewalk : adjCells){
-					Set<Cell> output = new HashSet<Cell>();
+		for (Cell squarewalk : adjCells) {
+			Set<Cell> output = new HashSet<Cell>();
 
 		if (squarewalk.i+1 < land.side && squarewalk.i-1 > 0 && squarewalk.j-1 > 0 && squarewalk.j+1 < land.side){
 		Cell a = new Cell(squarewalk.i,squarewalk.j);
