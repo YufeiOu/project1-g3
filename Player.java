@@ -12,7 +12,6 @@ public class Player implements pentos.sim.Player {
 
 	private int WATER = 0;
 	private int PARK = 1;
-	private boolean alternate = false;
 	private static final int RESIDENCESIZE = 5;
 	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
@@ -64,25 +63,29 @@ public class Player implements pentos.sim.Player {
 				Set<Cell> potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
 
 				if (potentialWater.size() == potentialPark.size()) {
-					// alternate between parks and ponds
-					if (alternate == false) {
-						chosen.water = potentialWater;
-						markedForConstruction.addAll(chosen.water);
-						alternate = true;
+					// cannot build either
+					if (potentialWater.size() == 0) {
+						return chosen;
 					}
-					else {
-						chosen.park = potentialPark;
-						markedForConstruction.addAll(chosen.park);
-						alternate = false;	
-					}
+					chosen.water = potentialWater;
+					markedForConstruction.addAll(chosen.water);
+					potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+					chosen.park = potentialPark;
+					markedForConstruction.addAll(chosen.park);
 				}
 				else if (potentialWater.size() < potentialPark.size() && potentialWater.size() != 0) {
 					chosen.water = potentialWater;
-					markedForConstruction.addAll(chosen.water);					
+					markedForConstruction.addAll(chosen.water);
+					potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+					chosen.park = potentialPark;
+					markedForConstruction.addAll(chosen.park);	
 				}
 				else {
 					chosen.park = potentialPark;
 					markedForConstruction.addAll(chosen.park);
+					potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER, true);
+					chosen.water = potentialWater;
+					markedForConstruction.addAll(chosen.water);
 				}
 			}
 			return chosen;
