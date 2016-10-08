@@ -59,17 +59,30 @@ public class Player implements pentos.sim.Player {
 				Set<Cell> markedForConstruction = new HashSet<Cell>();
 				markedForConstruction.addAll(roadCells);
 
-				if (alternate == false) {
-					Set<Cell> potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER, true);
+				// find smaller set strategy
+				Set<Cell> potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER, true);
+				Set<Cell> potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+
+				if (potentialWater.size() == potentialPark.size()) {
+					// alternate between parks and ponds
+					if (alternate == false) {
+						chosen.water = potentialWater;
+						markedForConstruction.addAll(chosen.water);
+						alternate = true;
+					}
+					else {
+						chosen.park = potentialPark;
+						markedForConstruction.addAll(chosen.park);
+						alternate = false;	
+					}
+				}
+				else if (potentialWater.size() < potentialPark.size() && potentialWater.size() != 0) {
 					chosen.water = potentialWater;
-					markedForConstruction.addAll(chosen.water);
-					alternate = true;
+					markedForConstruction.addAll(chosen.water);					
 				}
 				else {
-					Set<Cell> potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
 					chosen.park = potentialPark;
 					markedForConstruction.addAll(chosen.park);
-					alternate = false;
 				}
 			}
 			return chosen;
@@ -234,6 +247,7 @@ public class Player implements pentos.sim.Player {
 		// return 0,1,2 to indicate we can add 0,1,2 water to reach the pond or park, return -1 to indicate no nearby facility exist
 		Set<Cell> distance1 = new HashSet<Cell>();
 		Set<Cell> distance2 = new HashSet<Cell>();
+		Set<Cell> distance3 = new HashSet<Cell>();
 		for (Cell p : b) {
 			for (Cell q : p.neighbors()) {
 				if ((pond && land.isPond(q)) || (!pond && land.isField(q))) return 0;
@@ -251,6 +265,13 @@ public class Player implements pentos.sim.Player {
 		for (Cell p : distance2) {
 			for (Cell q : p.neighbors()) {
 				if ((pond && land.isPond(q)) || (!pond && land.isField(q))) return 2;
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q) && !distance2.contains(q)) 
+					distance3.add(q);
+			}
+		}		
+		for (Cell p : distance3) {
+			for (Cell q : p.neighbors()) {
+				if ((pond && land.isPond(q)) || (!pond && land.isField(q))) return 3;
 			}
 		}
 		return -1;
@@ -312,7 +333,7 @@ public class Player implements pentos.sim.Player {
 		else { distance = findNearbyPondOrParkDistance(b, marked, land, false); }
 		if (distance == 0) {
 			;
-		} else if (distance == 1 || distance == 2) {	
+		} else if (distance == 1 || distance == 2 || distance == 3) {	
 			if (pond) {				
 				possibleChoices = givenShortLengthWalks(b, marked, land, distance, this.WATER);
 			}
