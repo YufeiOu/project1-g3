@@ -31,24 +31,28 @@ public class Player implements pentos.sim.Player {
 		
 		// find all objective function values of each move, means "how good the move is"
 		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
+		// find the best 10 buildable moves in case some of them is detached from any raod
 		ArrayList<Integer> indexes = findSmallestObjs(objs, NUMBER_OF_RETRY);
 		
 		Move chosen = new Move(false);
 		Set<Cell> shiftedCells = new HashSet<Cell>();
 		Set<Cell> roadCells = new HashSet<Cell>();
 		
+		// build the building!
 		for (Integer index : indexes) {
 			chosen = moves.get(index);
 			shiftedCells = shiftedCellsFromMove(chosen);
 			roadCells = findShortestRoad(shiftedCells, land);
 			if (roadCells != null) break;
 		}
-		/*
+		/* 
+		// this is for initialization, for now we decide not to use it
 		if (!road_built) {
 			roadCells = buildRoad(land.side);
 			road_built = true;
 		}
 		*/
+		// start finding reasonable pond and field for resident
 		if (roadCells != null) {
 			chosen.road = roadCells;
 			road_cells.addAll(roadCells);
