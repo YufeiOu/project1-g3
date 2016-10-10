@@ -39,8 +39,8 @@ Architectural design:
 1) No initialized hardcode road or park/water.
 2) Resident and factory: search all possible buildable position (rotation included) and choose the best one according to our "building objective function".
 3) Road: determined by "findShortestRoad" after a resident/factory is built.
-4) to 2), it is possible a buildable position is never reached to any road, in this situation, we abandon this choice and find a new position.
-5) Once the building and road are chosen, they are fixed in this Move, after that, we begin to care about the water, and then park.
+4) to 2), it is possible a buildable position is never reached by any road, in this situation, we abandon this choice and find a new position.
+5) Once the building and road are chosen, they are fixed in this Move, after that, we begin to care about the water and/or park.
 6) We search a group of possible potential sets of water cells (could be empty), and use our "water objective function" to choose the best one.
 7) Once the water is fixed, we search a group of possible sets of park cells (could also be empty), and use our "park objective function" to choose the best one.
 When those steps finished, a Move is determined, we build them and then jump to the next turn.
