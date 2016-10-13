@@ -15,12 +15,10 @@ public class Player implements pentos.sim.Player {
 	private static final int RESIDENCESIZE = 5;
 	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
-	private boolean road_built;
-	private final int NUMBER_OF_RETRY = 10;
+	private final int NUMBER_OF_RETRY = 20;
 
 
 	public void init() { // function is called once at the beginning before play is called
-		this.road_built = false;
 	}
 
 	public Move play(Building request, Land land) {
@@ -31,27 +29,14 @@ public class Player implements pentos.sim.Player {
 		
 		// find all objective function values of each move, means "how good the move is"
 		ArrayList<Integer> objs = findObjectiveOfMoves(moves, land, request);
-		// find the best 10 buildable moves in case some of them is detached from any raod
+		// find the best 20 buildable moves in case some of them is detached from any raod
 		ArrayList<Integer> indexes = findSmallestObjs(objs, NUMBER_OF_RETRY);
+		// pick the best one among these candidates, this time include more time-consuming computation
+		Move chosen = findBestMove(moves, objs, indexes, land);
+		Set<Cell> shiftedCells = shiftedCellsFromMove(chosen);
+		Set<Cell> roadCells = findShortestRoad(shiftedCells, land);
 		
-		Move chosen = new Move(false);
-		Set<Cell> shiftedCells = new HashSet<Cell>();
-		Set<Cell> roadCells = new HashSet<Cell>();
-		
-		// build the building!
-		for (Integer index : indexes) {
-			chosen = moves.get(index);
-			shiftedCells = shiftedCellsFromMove(chosen);
-			roadCells = findShortestRoad(shiftedCells, land);
-			if (roadCells != null) break;
-		}
-		/* 
-		// this is for initialization, for now we decide not to use it
-		if (!road_built) {
-			roadCells = buildRoad(land.side);
-			road_built = true;
-		}
-		*/
+
 		// start finding reasonable pond and field for resident
 		if (roadCells != null) {
 			chosen.road = roadCells;
@@ -98,6 +83,7 @@ public class Player implements pentos.sim.Player {
 		}
 	}
 
+	/* methods on buildings begin */
 	private ArrayList<Move> findBuildableMoves(Building request, Land land) {
 		ArrayList<Move> moves = new ArrayList<Move> ();
 		for (int i = 0 ; i < land.side ; i++) {
@@ -143,11 +129,10 @@ public class Player implements pentos.sim.Player {
 			int obj = 0;
 			obj += (request.type == Building.Type.FACTORY ? i : -i);
 			obj += 100 * edgeIncrease(shiftedCells, land);
-			// include other objective functions
+			// TODO: remove hardcode
 			objs.add(obj);
 			i += 1;
 		}
-
 		return objs;
 	}
 
@@ -180,6 +165,70 @@ public class Player implements pentos.sim.Player {
 		return objList;
 	}
 
+	private Move findBestMove(ArrayList<Move> moves, ArrayList<Integer> objs, ArrayList<Integer> indexes, Land land) {
+		Move chosen = new Move(false);
+		Set<Cell> shiftedCells = new HashSet<Cell>();
+		Set<Cell> roadCells = new HashSet<Cell>();
+		Set<Cell> marked = new HashSet<Cell>(); // always empty in this case
+		int minimalValue = Integer.MAX_VALUE;
+		int miniIndex = 0;
+
+		for (Integer index : indexes) {
+			int tmpObj = objs.get(index);
+			chosen = moves.get(index);
+			shiftedCells = shiftedCellsFromMove(chosen);
+			roadCells = findShortestRoad(shiftedCells, land);
+			if (roadCells == null) {
+				continue;
+			} else { // long road punishment
+				tmpObj += 20 * roadCells.size();
+				// TODO: remove hardcode here
+			}
+			tmpObj += 20 * detachedNearbySlots(shiftedCells, marked, land);
+			if (tmpObj < minimalValue) {
+				minimalValue = tmpObj;
+				miniIndex = index;
+			}
+		}
+		return moves.get(miniIndex);
+	}
+
+	private int detachedNearbySlots(Set<Cell> potential, Set<Cell> marked, Land land) {
+		int slots = 0;
+		Set<Cell> oldMarked = new HashSet<Cell>(marked);
+		Set<Cell> newMarked = new HashSet<Cell>(marked);
+		newMarked.addAll(potential);
+
+		for (Cell p : potential) {
+			for (Cell q : p.neighbors()) {
+				if (!land.unoccupied(q) || potential.contains(q) || marked.contains(q)) continue;
+				if (detachedFromRoad(q, newMarked, land) && !detachedFromRoad(q, oldMarked, land)) slots += 1;
+			}
+		}
+		return slots;
+	}
+
+	private boolean detachedFromRoad(Cell cell, Set<Cell> marked, Land land) {
+		Queue<Cell> queue = new LinkedList<Cell>();
+		Set<Cell> visited = new HashSet<Cell>();
+		queue.add(cell);
+		visited.add(cell);
+		while (!queue.isEmpty()) {
+			Cell p = queue.remove();
+			Set<Cell> cells = new HashSet<Cell>();
+			cells.add(p);
+			if (isReached(cells, land)) return true;
+			for (Cell q : p.neighbors()) {
+				if (!land.unoccupied(q) || visited.contains(q) || marked.contains(q)) continue;
+				visited.add(q);
+				queue.add(q);
+			}
+		}
+		return false;
+	}
+	/* methods on buildings end */
+
+	/* methods on road begin */
 	private boolean isReached(Set<Cell> cells, Land land) {
 		for (int z=0; z<land.side; z++) {
 			if (
@@ -249,9 +298,11 @@ public class Player implements pentos.sim.Player {
 		else
 			return output;
     }
+    /* methods on road ends */
 
+    /* methods on park or water begin */
 	private int findNearbyPondOrParkDistance(Set<Cell> b, Set<Cell> marked, Land land, boolean pond) {
-		// return 0,1,2 to indicate we can add 0,1,2 water to reach the pond or park, return -1 to indicate no nearby facility exist
+		// return 0,1,2,3 to indicate we can add 0,1,2,3 water to reach the pond or park, return -1 to indicate no nearby facility exist
 		Set<Cell> distance1 = new HashSet<Cell>();
 		Set<Cell> distance2 = new HashSet<Cell>();
 		Set<Cell> distance3 = new HashSet<Cell>();
@@ -392,7 +443,7 @@ public class Player implements pentos.sim.Player {
 		}
 		return area;
 	}
-
+	/*
 	private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
 		for (Cell p : b) {
@@ -427,6 +478,7 @@ public class Player implements pentos.sim.Player {
 	}
 	 return WeightCheck;
 	}
+	*/
 
 	private Set<Cell> checkPondWeight(Set <Set<Cell>> pond, Land land){
 		Set<Cell> output = new HashSet<Cell>();
@@ -458,7 +510,7 @@ public class Player implements pentos.sim.Player {
 		// punish when take too much space
 		punish += potential.size();
 
-		// punish when useless wholes appear
+		// punish when useless holes appear
 		int oldConnectedArea = 0;
 		int newConnectedArea = 0;
 		Set<Cell> oldMarked = new HashSet<Cell>(marked);
@@ -569,6 +621,8 @@ public class Player implements pentos.sim.Player {
 		}
 		return output;
 	}
+	/* methods on park and water end */
 	
 }
+
 
