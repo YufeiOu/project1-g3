@@ -110,7 +110,28 @@ public class Player implements pentos.sim.Player {
 			}
 		}
 		return false;
-	}	
+	}
+	// find the area of connected unoccupied area that contains q;
+	private int findConnectedArea(Cell q, Set<Cell> marked, Land land, int upperBound) {
+		if (!land.unoccupied(q)) return 0;
+		Queue<Cell> queue = new LinkedList<Cell>();
+		Set<Cell> record = new HashSet<Cell>();
+		int area = 1;
+		int upper = upperBound <= 0 ? Integer.MAX_VALUE : upperBound;
+		queue.add(q);
+		record.add(q);
+		while (!queue.isEmpty()) {
+			Cell r = queue.remove();
+			for (Cell s : r.neighbors()) {
+				if (record.contains(s) || marked.contains(s) || !land.unoccupied(s)) continue;
+				queue.add(s);
+				record.add(s);
+				area += 1;
+				if (area >= upper) return upper;
+			}
+		}
+		return area;
+	}
 	/* helper functions end */
 
 	/* methods on buildings begin */
@@ -266,34 +287,6 @@ public class Player implements pentos.sim.Player {
 			return output;
     }
     /* methods on road ends */
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     /* methods on park or water begin */
     private void setWaterAndParkToResidence(Move chosen, Set<Cell> shiftedCells, Set<Cell> roadCells, Land land) {
@@ -481,55 +474,6 @@ public class Player implements pentos.sim.Player {
 			}
 			return traces;
 		}
-	}
-
-
-
-	private int findConnectedArea(Cell q, Set<Cell> marked, Land land, int upperBound) {
-		if (!land.unoccupied(q)) return 0;
-		Queue<Cell> queue = new LinkedList<Cell>();
-		Set<Cell> record = new HashSet<Cell>();
-		int area = 1;
-		int upper = upperBound <= 0 ? Integer.MAX_VALUE : upperBound;
-		queue.add(q);
-		record.add(q);
-		while (!queue.isEmpty()) {
-			Cell r = queue.remove();
-			for (Cell s : r.neighbors()) {
-				if (record.contains(s) || marked.contains(s) || !land.unoccupied(s)) continue;
-				queue.add(s);
-				record.add(s);
-				area += 1;
-				if (area >= upper) return upper;
-			}
-		}
-		return area;
-	}
-	
-	
-	
-
-	private Set<Cell> checkPondWeight(Set <Set<Cell>> pond, Land land){
-		Set<Cell> output = new HashSet<Cell>();
-		int min = 0;
-		for (Set<Cell> names : pond) {
-			int edge_increase = 0;
-			for (Cell waterCell : names) {
-					for (Cell adjCell : waterCell.neighbors()){
-				if (!land.unoccupied(adjCell))
-					edge_increase += 1;
-				if (land.unoccupied(adjCell))
-					edge_increase -= 2;
-			}
-    			}
-    		if (edge_increase < min){
-    			min = edge_increase;
-    			output = names;
-    		}
-
-
-		}
-		return output;
 	}
 
 	// a bunch of possible good shapes of water or park
