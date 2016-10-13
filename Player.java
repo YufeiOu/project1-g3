@@ -10,8 +10,6 @@ import java.util.*;
 
 public class Player implements pentos.sim.Player {
 
-	private int WATER = 0;
-	private int PARK = 1;
 	private static final int RESIDENCESIZE = 5;
 	private Random gen = new Random();
 	private Set<Cell> road_cells = new HashSet<Cell>();
@@ -205,7 +203,7 @@ public class Player implements pentos.sim.Player {
 				// TODO: remove hardcode here
 			}
 			// cut the space punishment
-			tmpObj += 20 * detachedNearbySlots(shiftedCells, marked, land);
+			//tmpObj += 20 * detachedNearbySlots(shiftedCells, marked, land);
 			// TODO: remove hardcode here
 			if (tmpObj < minimalValue) {
 				minimalValue = tmpObj;
@@ -269,14 +267,42 @@ public class Player implements pentos.sim.Player {
     }
     /* methods on road ends */
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     /* methods on park or water begin */
     private void setWaterAndParkToResidence(Move chosen, Set<Cell> shiftedCells, Set<Cell> roadCells, Land land) {
 		Set<Cell> markedForConstruction = new HashSet<Cell>();
 		markedForConstruction.addAll(roadCells);
 
 		// find smaller set strategy
-		Set<Cell> potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER, true);
-		Set<Cell> potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+		Set<Cell> potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, true);
+		Set<Cell> potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, false);
 
 		if (potentialWater.size() == potentialPark.size()) {
 			// cannot build either
@@ -285,22 +311,94 @@ public class Player implements pentos.sim.Player {
 			}
 			chosen.water = potentialWater;
 			markedForConstruction.addAll(chosen.water);
-			potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+			potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, false);
 			chosen.park = potentialPark;
 			markedForConstruction.addAll(chosen.park);
 		} else if (potentialWater.size() < potentialPark.size() && potentialWater.size() != 0) {
 			chosen.water = potentialWater;
 			markedForConstruction.addAll(chosen.water);
-			potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.PARK, false);
+			potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, false);
 			chosen.park = potentialPark;
 			markedForConstruction.addAll(chosen.park);	
 		} else {
 			chosen.park = potentialPark;
 			markedForConstruction.addAll(chosen.park);
-			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, this.WATER, true);
+			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, true);
 			chosen.water = potentialWater;
 			markedForConstruction.addAll(chosen.water);
-		}	
+		}
+		/*
+		int waterPunish = punishment(shiftedCells, markedForConstruction, land, potentialWater);
+		int parkPunish = punishment(shiftedCells, markedForConstruction, land, potentialPark);
+
+		if (waterPunish <= parkPunish) {
+			chosen.water = potentialWater;
+			markedForConstruction.addAll(chosen.water);
+			potentialPark = walkAndBuild(shiftedCells, markedForConstruction, land, 4, false);
+			chosen.park = potentialPark;
+		} else {
+			chosen.park = potentialPark;
+			markedForConstruction.addAll(chosen.park);
+			potentialWater = walkAndBuild(shiftedCells, markedForConstruction, land, 4, true);
+			chosen.water = potentialWater;
+		} 
+		*/
+	}
+
+	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, boolean pond) {
+		Set<Cell> potentialPondOrPark = new HashSet<Cell>();
+		ArrayList<Set<Cell>> possibleChoices = new ArrayList<Set<Cell>>();
+		int distance  = findNearbyPondOrParkDistance(b, marked, land, pond); 
+
+		if (distance == 0) {
+			return potentialPondOrPark;
+		} else if (distance < 4 && distance > 0) {	
+			possibleChoices = givenShortLengthWalks(b, marked, land, distance, pond);
+		} else {
+			possibleChoices.addAll(frankWalk(b, marked, land, n));
+			possibleChoices.addAll(shardenduWalk(b, marked, land, n));
+			for (int i=1; i<50; i++) {
+				possibleChoices.add(randomWalk(b, marked, land, n));
+			}
+		}
+
+		if (!possibleChoices.isEmpty()) {
+			ArrayList<Integer> objs = new ArrayList<Integer>();
+			for (Set<Cell> choice : possibleChoices) {
+				objs.add(punishment(b, marked, land, choice));
+			}
+			ArrayList<Integer> index = findSmallestObjs(objs, 1);
+
+			if (objs.get(index.get(0)) < 6) // TODO: remove this hardcode
+				potentialPondOrPark = possibleChoices.get(index.get(0));
+		}
+		return potentialPondOrPark;
+	}
+
+	private int punishment(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
+		int punish = 0;
+		// punish when take too much space
+		punish += potential.size();
+
+		// punish when useless holes appear
+		int oldConnectedArea = 0;
+		int newConnectedArea = 0;
+		Set<Cell> oldMarked = new HashSet<Cell>(marked);
+		Set<Cell> newMarked = new HashSet<Cell>(marked);
+		oldMarked.addAll(b);
+		newMarked.addAll(b); newMarked.addAll(potential);
+		for (Cell p : potential) {
+			for (Cell q : p.neighbors()) {
+				if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
+				oldConnectedArea = findConnectedArea(q, oldMarked, land, this.RESIDENCESIZE);
+				newConnectedArea = findConnectedArea(q, newMarked, land, this.RESIDENCESIZE);
+				punish += (oldConnectedArea == 5 && newConnectedArea < 5) ? 2 : 0;
+			}
+		}
+
+		// punish when ...
+
+		return punish;
 	}
 
 	private int findNearbyPondOrParkDistance(Set<Cell> b, Set<Cell> marked, Land land, boolean pond) {
@@ -337,7 +435,7 @@ public class Player implements pentos.sim.Player {
 		return -1;
 	}
 
-	private ArrayList<Set<Cell>> givenShortLengthWalks(Set<Cell> b, Set<Cell> marked, Land land, int walks, int type) {
+	private ArrayList<Set<Cell>> givenShortLengthWalks(Set<Cell> b, Set<Cell> marked, Land land, int walks, boolean pond) {
 		ArrayList<Set<Cell>> traces = new ArrayList<Set<Cell>>();
 		Set<Cell> traceQueue = new HashSet<Cell>();
 		Set<Cell> updatedMarked = new HashSet<Cell>(marked); updatedMarked.addAll(b);
@@ -348,11 +446,11 @@ public class Player implements pentos.sim.Player {
 				for (Cell q : p.neighbors()) {
 					if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
 					traceQueue.add(q);
-					if (type == this.WATER && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, true) == 0) {
+					if (pond && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, true) == 0) {
 						Set<Cell> trace = new HashSet<Cell>(traceQueue);
 						traces.add(trace);
 					}
-					else if (type == this.PARK && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, false) == 0) {
+					else if (!pond && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, false) == 0) {
 						Set<Cell> trace = new HashSet<Cell>(traceQueue);
 						traces.add(trace);
 					}	
@@ -368,11 +466,11 @@ public class Player implements pentos.sim.Player {
 					for (Cell r : q.neighbors()) {
 						if (b.contains(r) || marked.contains(r) || !land.unoccupied(r)) continue;
 						traceQueue.add(r);
-						if (type == this.WATER && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, true) == 0) {
+						if (pond && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, true) == 0) {
 							Set<Cell> trace = new HashSet<Cell>(traceQueue);
 							traces.add(trace);
 						}
-						else if (type == this.PARK && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, false) == 0) {
+						else if (!pond && findNearbyPondOrParkDistance(traceQueue, updatedMarked, land, false) == 0) {
 							Set<Cell> trace = new HashSet<Cell>(traceQueue);
 							traces.add(trace);
 						}	
@@ -385,45 +483,7 @@ public class Player implements pentos.sim.Player {
 		}
 	}
 
-	private Set<Cell> walkAndBuild(Set<Cell> b, Set<Cell> marked, Land land, int n, int mode, boolean pond) {
-		Set<Cell> potentialPondOrPark = new HashSet<Cell>();
-		ArrayList<Set<Cell>> possibleChoices = new ArrayList<Set<Cell>>();
-		int distance = -1;
-		if (pond) { distance = findNearbyPondOrParkDistance(b, marked, land, true); }
-		else { distance = findNearbyPondOrParkDistance(b, marked, land, false); }
-		if (distance == 0) {
-			;
-		} else if (distance == 1 || distance == 2 || distance == 3) {	
-			if (pond) {				
-				possibleChoices = givenShortLengthWalks(b, marked, land, distance, this.WATER);
-			}
-			else {
-				possibleChoices = givenShortLengthWalks(b, marked, land, distance, this.PARK);
-			} 
-		} else {
-			ArrayList<Set<Cell>> frankWalkSetsOfCells = frankWalk(b, marked, land, n);
-			if (frankWalkSetsOfCells.size() > 0) {
-				possibleChoices.addAll(frankWalkSetsOfCells);
-			} else {
-				for (int i=1; i<30; i++) {
-					possibleChoices.add(randomWalk(b, marked, land, n));
-				}
-			}
-			//possibleChoices.addAll(shardenduWalk(b, marked, land, n));
-		}
 
-		if (!possibleChoices.isEmpty()) {
-			ArrayList<Integer> objs = new ArrayList<Integer>();
-			for (Set<Cell> choice : possibleChoices) {
-				objs.add(punishment(b, marked, land, choice));
-			}
-			ArrayList<Integer> index = findSmallestObjs(objs, 1);
-
-			if (objs.get(index.get(0)) < 6)
-				potentialPondOrPark = possibleChoices.get(index.get(0));
-		}
-		return potentialPondOrPark;
-	}
 
 	private int findConnectedArea(Cell q, Set<Cell> marked, Land land, int upperBound) {
 		if (!land.unoccupied(q)) return 0;
@@ -445,42 +505,9 @@ public class Player implements pentos.sim.Player {
 		}
 		return area;
 	}
-	/*
-	private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
-		ArrayList<Cell> adjCells = new ArrayList<Cell>();
-		for (Cell p : b) {
-			for (Cell q : p.neighbors()) {
-				if (land.isField(q) || land.isPond(q))
-					return new ArrayList<Set<Cell>>();
-				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q))
-					adjCells.add(q); 
-			}
-		}
-		if (adjCells.isEmpty()) {
-			return new ArrayList<Set<Cell>>();
-		}
-		ArrayList<Set<Cell>> WeightCheck=new ArrayList<Set<Cell>>();
-		for (Cell squarewalk : adjCells) {
-			Set<Cell> output = new HashSet<Cell>();
-
-		if (squarewalk.i+1 < land.side && squarewalk.i-1 > 0 && squarewalk.j-1 > 0 && squarewalk.j+1 < land.side){
-		Cell a = new Cell(squarewalk.i,squarewalk.j);
-		Cell q = new Cell(squarewalk.i-1,squarewalk.j-1);
-		Cell c = new Cell(squarewalk.i,squarewalk.j-1);
-		Cell d = new Cell(squarewalk.i-1,squarewalk.j);
-		if (land.unoccupied(squarewalk.i,squarewalk.j) && !b.contains(a) && !b.contains(q) && !b.contains(c) && !b.contains(d) && !marked.contains(a)  && !marked.contains(q) && !marked.contains(c) && !marked.contains(d)  && land.unoccupied(squarewalk.i-1,squarewalk.j-1) && land.unoccupied(squarewalk.i,squarewalk.j-1) && land.unoccupied(squarewalk.i-1,squarewalk.j)){
-			output.add(a);
-			output.add(q);
-			output.add(c);
-			output.add(d);
-			WeightCheck.add(output);
-		}
-		
-	}
-	}
-	 return WeightCheck;
-	}
-	*/
+	
+	
+	
 
 	private Set<Cell> checkPondWeight(Set <Set<Cell>> pond, Land land){
 		Set<Cell> output = new HashSet<Cell>();
@@ -505,34 +532,7 @@ public class Player implements pentos.sim.Player {
 		return output;
 	}
 
-
-
-	private int punishment(Set<Cell> b, Set<Cell> marked, Land land, Set<Cell> potential) {
-		int punish = 0;
-		// punish when take too much space
-		punish += potential.size();
-
-		// punish when useless holes appear
-		int oldConnectedArea = 0;
-		int newConnectedArea = 0;
-		Set<Cell> oldMarked = new HashSet<Cell>(marked);
-		Set<Cell> newMarked = new HashSet<Cell>(marked);
-		oldMarked.addAll(b);
-		newMarked.addAll(b); newMarked.addAll(potential);
-		for (Cell p : potential) {
-			for (Cell q : p.neighbors()) {
-				if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
-				oldConnectedArea = findConnectedArea(q, oldMarked, land, this.RESIDENCESIZE);
-				newConnectedArea = findConnectedArea(q, newMarked, land, this.RESIDENCESIZE);
-				punish += (oldConnectedArea == 5 && newConnectedArea < 5) ? 2 : 0;
-			}
-		}
-
-		// punish when ...
-
-		return punish;
-	}
-
+	// a bunch of possible good shapes of water or park
 	private ArrayList<Set<Cell>> frankWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Set<Cell>> output = new ArrayList<Set<Cell>>();
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
@@ -592,7 +592,40 @@ public class Player implements pentos.sim.Player {
 		}
 		return output;	
 	}
+	private ArrayList<Set<Cell>> shardenduWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
+		ArrayList<Cell> adjCells = new ArrayList<Cell>();
+		for (Cell p : b) {
+			for (Cell q : p.neighbors()) {
+				if (land.isField(q) || land.isPond(q))
+					return new ArrayList<Set<Cell>>();
+				if (!b.contains(q) && !marked.contains(q) && land.unoccupied(q))
+					adjCells.add(q); 
+			}
+		}
+		if (adjCells.isEmpty()) {
+			return new ArrayList<Set<Cell>>();
+		}
+		ArrayList<Set<Cell>> WeightCheck=new ArrayList<Set<Cell>>();
+		for (Cell squarewalk : adjCells) {
+			Set<Cell> output = new HashSet<Cell>();
 
+			if (squarewalk.i+1 < land.side && squarewalk.i-1 > 0 && squarewalk.j-1 > 0 && squarewalk.j+1 < land.side){
+				Cell a = new Cell(squarewalk.i,squarewalk.j);
+				Cell q = new Cell(squarewalk.i-1,squarewalk.j-1);
+				Cell c = new Cell(squarewalk.i,squarewalk.j-1);
+				Cell d = new Cell(squarewalk.i-1,squarewalk.j);
+				if (land.unoccupied(squarewalk.i,squarewalk.j) && !b.contains(a) && !b.contains(q) && !b.contains(c) && !b.contains(d) && !marked.contains(a)  && !marked.contains(q) && !marked.contains(c) && !marked.contains(d)  && land.unoccupied(squarewalk.i-1,squarewalk.j-1) && land.unoccupied(squarewalk.i,squarewalk.j-1) && land.unoccupied(squarewalk.i-1,squarewalk.j)){
+					output.add(a);
+					output.add(q);
+					output.add(c);
+					output.add(d);
+					WeightCheck.add(output);
+				}
+			
+			}
+		}
+		return WeightCheck;
+	}
 	private Set<Cell> randomWalk(Set<Cell> b, Set<Cell> marked, Land land, int n) {
 		ArrayList<Cell> adjCells = new ArrayList<Cell>();
 		Set<Cell> output = new HashSet<Cell>();
@@ -615,7 +648,6 @@ public class Player implements pentos.sim.Player {
 					walk_cells.add(p);		
 			}
 			if (walk_cells.isEmpty()) {
-				//return output; //if you want to build it anyway
 				return new HashSet<Cell>();
 			}
 			output.add(tail);	    
