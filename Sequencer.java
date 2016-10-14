@@ -13,15 +13,9 @@ public class Sequencer implements pentos.sim.Sequencer {
 
     
     public void init(){
+    	gen = new Random();
     	flag++;
-	flagFactory++;
-    }
-
-    public void init(Long seed) {
-	if (seed != null) 
-	    gen = new Random(seed.longValue());
-	else
-	    gen = new Random();
+    	flagFactory++;
     }
     
     public Building next() {
