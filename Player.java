@@ -224,7 +224,7 @@ public class Player implements pentos.sim.Player {
 				// TODO: remove hardcode here
 			}
 			// cut the space punishment
-			//tmpObj += 20 * detachedNearbySlots(shiftedCells, marked, land);
+			tmpObj += 20 * detachedNearbySlots(shiftedCells, marked, land);
 			// TODO: remove hardcode here
 			if (tmpObj < minimalValue) {
 				minimalValue = tmpObj;
@@ -362,7 +362,7 @@ public class Player implements pentos.sim.Player {
 			}
 			ArrayList<Integer> index = findSmallestObjs(objs, 1);
 
-			if (objs.get(index.get(0)) < 6) // TODO: remove this hardcode
+			if (objs.get(index.get(0)) < 10) // TODO: remove this hardcode
 				potentialPondOrPark = possibleChoices.get(index.get(0));
 		}
 		return potentialPondOrPark;
@@ -385,10 +385,10 @@ public class Player implements pentos.sim.Player {
 				if (b.contains(q) || marked.contains(q) || !land.unoccupied(q)) continue;
 				oldConnectedArea = findConnectedArea(q, oldMarked, land, this.RESIDENCESIZE);
 				newConnectedArea = findConnectedArea(q, newMarked, land, this.RESIDENCESIZE);
-				punish += (oldConnectedArea == 5 && newConnectedArea < 5) ? 2 : 0;
+				punish += (oldConnectedArea == 5 && newConnectedArea < 5) ? 3 : 0;
 			}
+			if (detachedFromRoad(p, oldMarked, land)) punish -= 1;
 		}
-
 		// punish when ...
 
 		return punish;
