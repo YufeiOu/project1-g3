@@ -349,10 +349,12 @@ public class Player implements pentos.sim.Player {
 			possibleChoices = givenShortLengthWalks(b, marked, land, distance, pond);
 		} else {
 			possibleChoices.addAll(frankWalk(b, marked, land, n));
+			/*
 			possibleChoices.addAll(shardenduWalk(b, marked, land, n));
 			for (int i=1; i<50; i++) {
 				possibleChoices.add(randomWalk(b, marked, land, n));
 			}
+			*/
 		}
 
 		if (!possibleChoices.isEmpty()) {
